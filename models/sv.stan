@@ -23,17 +23,13 @@ parameters {
   vector<lower=0>[P] eta;
 
   // mean and variance across subjects within scenario
-  vector<lower=0>[P] tau[Nc];
+  vector<lower=0>[P] tau;
 
-  // residuals
+  real<lower=0> sigma;  // observation noise
+  
+  // random effects
   vector[P] delta[Nc];  // scenario-specific
   vector[P] eps[Nsub];  // subject-specific
-  real<lower=0> sigma;  // observation noise
-
-  // degrees of freedom
-  real<lower=1> nu_eps;
-  real<lower=1> nu_delta;
-
 }
 
 transformed parameters {
@@ -49,7 +45,7 @@ transformed parameters {
   // draw individual effects
   for (c in 1:Nc) {
     for (i in 1:Nsub) {
-      beta[i, c] = gamma[c] + tau[c] .* eps[i];
+      beta[i, c] = gamma[c] + tau .* eps[i];
     }
   }
 
@@ -59,22 +55,19 @@ transformed parameters {
 }
 
 model {
+  
+  mu ~ normal(M, M);
+  eta ~ normal(0, M/4);
+  tau ~ normal(0, M/4);
+  
   for (i in 1:Nsub)
-    eps[i] ~ student_t(nu_eps, 0., 1.);
+    eps[i] ~ normal(0., 1.);
 
   for (c in 1:Nc) {
-    delta[c] ~ student_t(nu_delta, 0., 1.);
+    delta[c] ~ normal(0., 1.);
   }
 
-  nu_eps ~ normal(0, 100);
-  nu_delta ~ normal(0, 100);
-
-  mu ~ normal(M, M);
-  eta ~ cauchy(0, M);
-  for (c in 1:Nc)
-    tau[c] ~ cauchy(0, M);
-
-  sigma ~ cauchy(0, M/10.);
+  sigma ~ normal(0, M/4.);
 
   for (i in 1:N) {
       if (cens[i] == 0)

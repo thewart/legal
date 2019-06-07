@@ -24,18 +24,13 @@ parameters {
   matrix[P, Nr] mu;  
   matrix<lower=0>[P, Nr] eta;  
   cholesky_factor_corr[Nr] L_eta[P];
-  
-  // mean and variance across subjects within scenario 
   matrix<lower=0>[P, Nr] tau;
-  
-  // residuals
-  matrix[P, Nr] delta[Nc];  // scenario-specific
-  matrix[P, Nr] eps[Nsub];  // subject-specific
   real<lower=0> sigma[Nr];  // observation noise
   
-  // degrees of freedom
-  real<lower=1> nu_eps;
-  real<lower=1> nu_delta;
+  // random effects
+  matrix[P, Nr] delta[Nc];  // scenario-specific
+  matrix[P, Nr] eps[Nsub];  // subject-specific
+  
   
 }
 transformed parameters {
@@ -61,37 +56,26 @@ transformed parameters {
 }
 
 model {
-  for (i in 1:Nsub) {
-    for (p in 1:P) {
-      eps[i, p] ~ student_t(nu_eps, 0., 1.);  // subject residuals
-    }
-  }
 
-  for (c in 1:Nc) {
-    for (p in 1:P) {
-      delta[c, p] ~ student_t(nu_delta, 0., 1.);  // case residuals
-      tau[p] ~ cauchy(0, M);  // case variances across subjects
-    }
-  }
+  //random effects  
+  for (i in 1:Nsub) 
+    to_vector(eps[i]) ~ normal(0., 1.);  // subject residuals
+  for (c in 1:Nc)
+    to_vector(delta[c]) ~ normal(0., 1.);  // case residuals
   
-  nu_eps ~ normal(0, 100);
-  nu_delta ~ normal(0, 100);
-  
+  //population parameters
   for (p in 1:P) {
-    L_eta[p] ~ lkj_corr_cholesky(1.0);
+    mu[p] ~ normal(M, M/2);
+    eta[p] ~ normal(0, M/4);  // subject variances
+    tau[p] ~ normal(0, M/4);  // case variances
+    L_eta[p] ~ lkj_corr_cholesky(2.0);
   }
+  sigma ~ normal(0, M/4.);
   
-  for (p in 1:P) {
-    mu[p] ~ normal(M, M);
-    eta[p] ~ cauchy(0, M);
-  }
-  
-  sigma ~ cauchy(0, M/10.);
-
   for (i in 1:N) {
     real theta;
     
-    // calculate linear predictor
+  // calculate linear predictor
     theta = dot_product(X[i], beta[S[i], C[i], :, Ri[i]]);
       
     if (cens[i] == 0) 
