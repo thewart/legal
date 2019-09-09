@@ -1,4 +1,6 @@
-dat <- fread("~/code/legal/data/mri_subjects.csv")
+# dat <- fread("~/code/legal/data/mri_subjects.csv")
+dat <- fread("~/code/legal/data/combined_data.csv")
+dat <- dat[group=="ilsa"]
 dat[,witness:=factor(witness,levels=c("No Witness", "Yes Witness"))]
 dat[,physical:=factor(physical, levels=c("No Physical", "Non-DNA", "DNA"))]
 dat[,history:=factor(history, levels=c("No History", "Unrelated", "Related"))]
@@ -33,13 +35,13 @@ if (bivar) {
       Nr=length(unique(dat$rating_type))))
     initf <- function() 
       return(list(sigma=runif(2,10,50)))
-    model <- stan_model("~/code/legal/models/mv_t.stan")
+    model <- stan_model("~/code/legal/models/mv_n.stan")
     
     out <- sampling(model,standat,chains=4,init=initf,
                     pars=c("mu","eta","tau","sigma","Omega","gamma"),iter=500,warmup=200)
     
 } else {
-  model <- stan_model("~/code/legal/models/sv_t.stan")
+  model <- stan_model("~/code/legal/models/sv_n.stan")
   initf <- function() 
     return(list(sigma=runif(1,10,50)))
   out <- sampling(model,standat,chains=3,init=initf,

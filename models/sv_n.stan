@@ -18,18 +18,20 @@ transformed data {
   M = (U + L)/2.;
 }
 parameters {
-  // mean and variance across scenarios for each regressor
+  // mean for each regressor
   vector[P] mu;
+  
+  // variance across scenarios
   vector<lower=0>[P] eta;
 
-  // mean and variance across subjects within scenario
+  // variance across subjects
   vector<lower=0>[P] tau;
 
-  real<lower=0> sigma;  // observation noise
-  
   // random effects
   vector[P] delta[Nc];  // scenario-specific
   vector[P] eps[Nsub];  // subject-specific
+  
+  real<lower=0> sigma;  // observation noise
 }
 
 transformed parameters {
