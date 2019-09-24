@@ -70,7 +70,7 @@ model {
   }
 
   sigma ~ normal(0, M/4.);
-
+  
   for (i in 1:N) {
       if (cens[i] == 0)
         R[i] ~ normal(theta[i], sigma);
@@ -78,5 +78,20 @@ model {
         target += normal_lcdf(L | theta[i], sigma);
       else if (cens[i] == 1)
         target += normal_lccdf(U | theta[i], sigma);
+  }
+}
+
+generated quantities {
+  real Rhat[N];
+  
+  for (i in 1:N) {
+    real pu;
+    real pl;
+    real Z;
+    
+    pl = normal_cdf(L, theta[i], sigma);
+    pu = 1-normal_cdf(U, theta[i], sigma);
+    Z = (exp(normal_lpdf(L | theta[i], sigma)) - exp(normal_lpdf(U | theta[i], sigma)))/(1-pu-pl);
+    Rhat[i] = L*pl + U*pu + (theta[i] + Z*sigma^2)*(1-pl-pu);
   }
 }
