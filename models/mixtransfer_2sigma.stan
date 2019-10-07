@@ -42,12 +42,12 @@ parameters {
   vector[P] delta[Nc];  // scenario-specific
   // vector[P] eps[Nsub];  // subject-specific
   
-  real<lower=0> sigma;  // observation noise
+  real<lower=0> sigma_r;  // observation noise
   
   simplex[K] w_trans;   //component weights
   vector<lower=0>[K-1] l_trans_dist;     //component location distances
-  vector<lower=0>[K] s_trans_raw; //component scales
-  
+  vector<lower=0>[K] s_trans; //component scales
+  vector[N] u;
 }
 
 transformed parameters {
@@ -55,7 +55,6 @@ transformed parameters {
   real z[N];
   vector[P] gamma[Nc];  // scenario effects
   vector[K] l_trans;
-  vector[K] s_trans;
   real log_lik[N];
   // vector[P] beta[Nsub, Nc];  // individual effects
 
@@ -71,24 +70,24 @@ transformed parameters {
   //   }
   // }
   {
-    real sigmahat_trans; //mixture scale
+    // real sigmahat_trans; //mixture scale
     l_trans = append_row(0, cumulative_sum(l_trans_dist));
     l_trans -= dot_product(w_trans, l_trans);
-    sigmahat_trans = dot_product(w_trans, l_trans .* l_trans + s_trans_raw .* s_trans_raw);
-    l_trans ./= sqrt(sigmahat_trans);
-    s_trans = s_trans_raw ./ sigmahat_trans;
+    // sigmahat_trans = dot_product(w_trans, l_trans .* l_trans + s_trans_raw .* s_trans_raw);
+    // l_trans ./= sqrt(sigmahat_trans);
+    // s_trans = s_trans_raw ./ sigmahat_trans;
     
     // get linear predictor
     for (i in 1:N) {
       theta[i] = dot_product(X[i], gamma[C[i]]);
-      z[i] = transferfunc(theta[i], w_trans, l_trans, s_trans)*100;
+      z[i] = transferfunc(theta[i] + u[i], w_trans, l_trans, s_trans)*100;
       
       if (cens[i] == 0)
-        log_lik[i] = normal_lpdf(R[i] | z[i], sigma);
+        log_lik[i] = normal_lpdf(R[i] | z[i], sigma_r);
       else if (cens[i] == -1)
-        log_lik[i] = normal_lcdf(L | z[i], sigma);
+        log_lik[i] = normal_lcdf(L | z[i], sigma_r);
       else if (cens[i] == 1)
-        log_lik[i] = normal_lccdf(U | z[i], sigma);
+        log_lik[i] = normal_lccdf(U | z[i], sigma_r);
 
     }
   }
@@ -106,15 +105,15 @@ model {
   for (c in 1:Nc) {
     delta[c] ~ normal(0., 1.);
   }
-  sigma ~ normal(0, M/4.);
-  
+  sigma_r ~ normal(0, 10.);
+
   for (i in 1:N)
     target += log_lik[i];
 
-  
-  w_trans ~ dirichlet(rep_vector(inv(K),K));
+  w_trans ~ dirichlet(rep_vector(1,K));
   l_trans_dist ~ normal(0, 1);
-  s_trans_raw ~ normal(0, 1);
+  s_trans ~ normal(0, 1);
+  u ~ normal(0,1);
 }
 
 // generated quantities {
