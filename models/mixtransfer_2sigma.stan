@@ -52,48 +52,36 @@ parameters {
 
 transformed parameters {
   real theta[N];
-  real z[N];
   vector[P] gamma[Nc];  // scenario effects
   vector[K] l_trans;
-  real log_lik[N];
   // vector[P] beta[Nsub, Nc];  // individual effects
 
   // draw scenario effects for each group
   for (c in 1:Nc) {
     gamma[c] = mu + eta .* delta[c];
   }
-
   // draw individual effects
   // for (c in 1:Nc) {
   //   for (i in 1:Nsub) {
   //     beta[i, c] = gamma[c] + tau .* eps[i];
   //   }
   // }
-  {
-    // real sigmahat_trans; //mixture scale
+  // get linear predictor
+  for (i in 1:N) 
+    theta[i] = dot_product(X[i], gamma[C[i]]);
+  
+  if (K>1) {
     l_trans = append_row(0, cumulative_sum(l_trans_dist));
     l_trans -= dot_product(w_trans, l_trans);
-    // sigmahat_trans = dot_product(w_trans, l_trans .* l_trans + s_trans_raw .* s_trans_raw);
-    // l_trans ./= sqrt(sigmahat_trans);
-    // s_trans = s_trans_raw ./ sigmahat_trans;
-    
-    // get linear predictor
-    for (i in 1:N) {
-      theta[i] = dot_product(X[i], gamma[C[i]]);
-      z[i] = transferfunc(theta[i] + u[i], w_trans, l_trans, s_trans)*100;
-      
-      if (cens[i] == 0)
-        log_lik[i] = normal_lpdf(R[i] | z[i], sigma_r);
-      else if (cens[i] == -1)
-        log_lik[i] = normal_lcdf(L | z[i], sigma_r);
-      else if (cens[i] == 1)
-        log_lik[i] = normal_lccdf(U | z[i], sigma_r);
-
-    }
+  } else {
+    l_trans = rep_vector(0,1);
   }
 }
 
 model {
+  
+  for (i in 1:N)
+    R[i] ~ normal(transferfunc(theta + u, w_trans, l_trans, s_trans), sigma_r) T[L, U];
   
   mu ~ normal(0, 1);
   eta ~ normal(0, 1);
@@ -101,14 +89,10 @@ model {
   
   // for (i in 1:Nsub)
   //   eps[i] ~ normal(0., 1.);
-
-  for (c in 1:Nc) {
+  for (c in 1:Nc)
     delta[c] ~ normal(0., 1.);
-  }
+    
   sigma_r ~ normal(0, 10.);
-
-  for (i in 1:N)
-    target += log_lik[i];
 
   w_trans ~ dirichlet(rep_vector(1,K));
   l_trans_dist ~ normal(0, 1);
@@ -116,17 +100,19 @@ model {
   u ~ normal(0,1);
 }
 
-// generated quantities {
-//   real Rhat[N];
-//   
-//   for (i in 1:N) {
-//     real pu;
-//     real pl;
-//     real Z;
-//     
-//     pl = normal_cdf(L, theta[i], sigma);
-//     pu = 1-normal_cdf(U, theta[i], sigma);
-//     Z = (exp(normal_lpdf(L | theta[i], sigma)) - exp(normal_lpdf(U | theta[i], sigma)))/(1-pu-pl);
-//     Rhat[i] = L*pl + U*pu + (theta[i] + Z*sigma^2)*(1-pl-pu);
-//   }
-// }
+generated quantities {
+  real log_lik[N];
+  int ns;
+  
+  for (i in 1:N) {
+    log_lik[i] = 0;
+    for (j in 1:ns) {
+      real z;
+      z = transferfunc(theta + normal_rng(0,1), w_trans, l_trans, s_trans)
+      log_lik[i] += normal_lcdf(R[i] | z, sigma_r);
+    }
+    log_lik[i] = log_lik[i]/ns - 
+      log_diff_exp(normal_lcdf(L | 0, sigma_r), normal_lcdf(U | 0, sigma_r))
+  }
+  
+}
