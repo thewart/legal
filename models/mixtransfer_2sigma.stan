@@ -79,38 +79,32 @@ transformed parameters {
 }
 
 model {
-  
+  real ll = 0;
   for (i in 1:N) {
-      real z = transferfunc(theta[i] + u[i], w_trans, l_trans, s_trans)*(U-L) + L;
-  //     if (cens[i] == 0)
-  //       target += normal_lpdf(R[i] | z, sigma);
-  //     else if (cens[i] == -1)
-  //       target += normal_lcdf(L | z, sigma);
-  //     else if (cens[i] == 1)
-  //       target += normal_lccdf(U | z, sigma);
-      R[i] ~ normal(z, sigma);
-      if (R[i] < L || R[i] > U) {
-        target += negative_infinity();
-        print("juh?") 
-      } else
-        target += -log_diff_exp(normal_lcdf(U | z, sigma),normal_lcdf(L | z, sigma));
-  }
-  
-  mu ~ normal(0, 1);
-  eta ~ normal(0, 1);
-  tau ~ normal(0, M/4);
+    real z = transferfunc(theta[i] + u[i], w_trans, l_trans, s_trans)*(U-L) + L;
+    if (cens[i] == 0)
+      target += normal_lpdf(R[i] | z, sigma);
+    else if (cens[i] == -1)
+      target += normal_lcdf(L | z, sigma);
+    else if (cens[i] == 1)
+      target += normal_lccdf(U | z, sigma);
+ }
 
-  for (i in 1:Nsub)
-    eps[i] ~ normal(0., 1.);
-  for (c in 1:Nc)
-    delta[c] ~ normal(0., 1.);
+ mu ~ normal(0, 1);
+ eta ~ normal(0, 1);
+ tau ~ normal(0, M/4);
+ 
+ for (i in 1:Nsub)
+   eps[i] ~ normal(0., 1.);
+ for (c in 1:Nc)
+   delta[c] ~ normal(0., 1.);
     
-  sigma ~ normal(0, 10.);
+ sigma ~ normal(0, 10.);
 
-  w_trans ~ dirichlet(rep_vector(1,K));
-  l_trans_dist ~ normal(0, 1);
-  s_trans ~ normal(0, 1);
-  u ~ normal(0,1);
+ w_trans ~ dirichlet(rep_vector(1,K));
+ l_trans_dist ~ normal(0, 1);
+ s_trans ~ normal(0, 1);
+ u ~ normal(0,1);
 }
 
 // generated quantities {
