@@ -11,6 +11,7 @@ functions {
 data {
   int L;  // lower censoring
   int U;  // upper censoring
+  int D; // distance between consecutive points on scale
   int<lower=0> Nsub;  // number of subjects
   int<lower=0> Nc;  // number of cases
   int<lower=0> N;  // number of observations
@@ -26,8 +27,10 @@ data {
 
 transformed data {
   real M;
+  real I;
 
   M = (U + L)/2.;
+  I = D/2.;
 }
 parameters {
   // mean for each regressor
@@ -43,7 +46,7 @@ parameters {
   vector[P] delta[Nc];  // scenario-specific
   vector[P] eps[Nsub];  // subject-specific
   
-  real<lower=0> sigma;  // observation noise
+  real<lower=1> sigma;  // observation noise
   
   simplex[K] w_trans;   //component weights
   vector<lower=0>[K-1] l_trans_dist;     //component location distances
@@ -79,15 +82,16 @@ transformed parameters {
 }
 
 model {
+  
   for (i in 1:N) {
     real z = transferfunc(theta[i] + u[i], w_trans, l_trans, s_trans)*(U-L) + L;
     if (cens[i] == 0)
-      target += normal_lpdf(R[i] | z, sigma);
+      target += log_diff_exp(normal_lcdf(R[i]+I | z, sigma), normal_lcdf(R[i]-I | z, sigma));
     else if (cens[i] == -1)
-      target += normal_lcdf(L | z, sigma);
+      target += normal_lcdf(R[i]+I | z, sigma);
     else if (cens[i] == 1)
-      target += normal_lccdf(U | z, sigma);
- }
+      target += normal_lccdf(R[i]-I | z, sigma);
+    }
 
  mu ~ normal(0, 2.5);
  eta ~ normal(0, 2.5);
@@ -114,13 +118,12 @@ generated quantities {
 
     for (j in 1:ns) {
       real z = transferfunc(theta[i] + normal_rng(0,1), w_trans, l_trans, s_trans)*(U-L) + L;
-
       if (cens[i] == 0)
-        lp[j] = normal_lpdf(R[i] | z, sigma);
+        lp[j] = log_diff_exp(normal_lcdf(R[i]+I | z, sigma), normal_lcdf(R[i]-I | z, sigma));
       else if (cens[i] == -1)
-        lp[j] = normal_lcdf(L | z, sigma);
+        lp[j] = normal_lcdf(R[i]+I | z, sigma);
       else if (cens[i] == 1)
-        lp[j] = normal_lccdf(U | z, sigma);
+        lp[j] = normal_lccdf(R[i]-I | z, sigma);
       lp[j] -= log(ns);
     }
 

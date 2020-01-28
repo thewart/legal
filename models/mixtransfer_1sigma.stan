@@ -99,10 +99,10 @@ transformed parameters {
 
 model {
   
-  mu ~ normal(0, 1);
-  eta ~ normal(0, 1);
-  tau ~ normal(0, M/4);
-  sigma ~ normal(0, M/4.);
+  mu ~ normal(0, 2.5);
+  eta ~ normal(0, 2.5);
+  tau ~ normal(0, 2.5);
+  sigma ~ normal(0, 10.);
   
   for (i in 1:Nsub)
     eps[i] ~ normal(0., 1.);
@@ -115,6 +115,6 @@ model {
 
   
   w_trans ~ dirichlet(rep_vector(1,K));
-  l_trans_dist ~ normal(0, 1);
-  s_trans_raw ~ normal(0, 1);
+  l_trans_dist ~ normal(0, 2.5);
+  s_trans_raw ~ normal(0, 2.5);
 }
