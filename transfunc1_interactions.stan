@@ -6,7 +6,6 @@ data {
   int<lower=0> Nscen;  // number of cases
   int<lower=0> N;  // number of observations
   int<lower=0> P;  // number of fixed + random effect regressors
-  int<lower=0> P0;  // number of fixed effects
   real<lower=L, upper=U> R[N];  // ratings
   int<lower=-1, upper=1> cens[N];  // -1 = left censor, 1 = right censor, 0 = none
   matrix[N, P] X;  // design matrix for fixed + random effects
@@ -55,7 +54,7 @@ transformed parameters {
   vector[P2] lambda[Nsubj];     // individual interactions
   real eta[N];                  //linear predictor
   real log_lik[N];
-
+  
   //random effects
   for (i in 1:Nscen) 
     beta_scen[i] = sigma_scen .* beta_scen_raw[i];
