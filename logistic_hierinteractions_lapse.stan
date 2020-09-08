@@ -31,18 +31,15 @@ parameters {
   
   //interactions
   vector[P2] lambda_mu_raw;
-  real<lower=0> sigma_lambda_mu;
   
-  real gamma_mu;
+  real mu_gamma;
   vector[Nsubj] gamma_raw;
   real<lower=0> sigma_gamma;
-  vector[P2] lambda_subj_raw[Nsubj];
 }
 
 transformed parameters {
   vector[P] beta_scen[Nscen];  // scenario effects
   vector[P] beta_subj[Nsubj];  // individual effects
-  real eta[N]; //linear predictor
   real<lower=0,upper=1> eps[Nsubj];
   real<lower=0> sigma_lambda_subj[Nsubj]; 
   vector[P2] lambda[Nsubj];
@@ -54,14 +51,13 @@ transformed parameters {
   for (i in 1:Nsubj) {
     beta_subj[i] = sigma_subj .* beta_subj_raw[i];
     eps[i] = inv_logit(mu_eps + sigma_eps * eps_raw[i]);
-    sigma_lambda_subj[i] = exp(gamma_mu + sigma_gamma * gamma_raw[i]);
-    lambda[i] = sigma_lambda_mu * lambda_mu_raw + sigma_lambda_subj[i] * lambda_subj_raw[i];
+    sigma_lambda_subj[i] = exp(mu_gamma + sigma_gamma * gamma_raw[i]);
+    lambda[i] = lambda_mu_raw * sigma_lambda_subj[i];
   }
   //linear predictor  
   for (i in 1:N) {
-    eta[i] = X[i]*(beta_mu + beta_scen[Scen[i]] + beta_subj[Subj[i]]) + Z[i]*lambda[Subj[i]];
-    log_lik[i] = log_mix(eps[Subj[i]], bernoulli_lpmf(Y[i] | 0.5),
-                                       bernoulli_logit_lpmf(Y[i] | eta[i]));
+    real eta = X[i]*(beta_mu + beta_scen[Scen[i]] + beta_subj[Subj[i]]) + Z[i]*lambda[Subj[i]];
+    log_lik[i] = log_mix(eps[Subj[i]], bernoulli_lpmf(Y[i] | 0.5), bernoulli_logit_lpmf(Y[i] | eta));
   }
 }
 
@@ -70,23 +66,21 @@ model {
     for (i in 1:N)
       target += log_lik[i];
     
-    beta_mu ~ normal(0, 2.5);
-    sigma_scen ~ normal(0, 2.5);
+    beta_mu ~ normal(0, 5);
+    sigma_scen ~ normal(0, 1);
     sigma_subj ~ normal(0, 1);
     
     mu_eps ~ normal(0, 5);
-    sigma_eps ~ normal(0, 10);
+    sigma_eps ~ normal(0, 5);
     
-    lambda_mu_raw ~ normal(0., 1.);
-    sigma_lambda_mu ~ normal(0., 2.5);
-    gamma_mu ~ normal(0., 1);
-    sigma_gamma ~ normal(0., 0.5);
+    lambda_mu_raw ~ normal(0, 1);
+    mu_gamma ~ normal(0, 2.5);
+    sigma_gamma ~ normal(0, 2.5);
+    
     gamma_raw ~ normal(0, 1);
-    for (i in 1:Nsubj) {
-      beta_subj_raw[i] ~ normal(0., 1.);
-      eps_raw ~ normal(0., 1.);
-      lambda_subj_raw[i] ~ normal(0., 1.);
-    }
+    eps_raw ~ normal(0, 1);
+    for (i in 1:Nsubj) 
+      beta_subj_raw[i] ~ normal(0, 1);
     for (i in 1:Nscen)
-      beta_scen_raw[i] ~ normal(0., 1.);
+      beta_scen_raw[i] ~ normal(0, 1);
 }
