@@ -15,10 +15,10 @@ parameters {
   vector[P] mu_beta;
   
   // variance across scenarios
-  vector<lower=0>[P] sigma_scen;
+  vector<lower=0>[P] sigma_beta_scen;
   
   // residual variances across subjects
-  vector<lower=0>[P] sigma_subj;
+  vector<lower=0>[P] sigma_beta_subj;
 
   // random effects
   vector[P] beta_scen_raw[Nscen];  // scenario effects
@@ -49,9 +49,9 @@ transformed parameters {
   
   //random effects
   for (i in 1:Nscen) 
-    beta_scen[i] = sigma_scen .* beta_scen_raw[i];
+    beta_scen[i] = sigma_beta_scen .* beta_scen_raw[i];
   for (i in 1:Nsubj) {
-    beta_subj[i] = sigma_subj .* beta_subj_raw[i];
+    beta_subj[i] = sigma_beta_subj .* beta_subj_raw[i];
     cp[i][1] = alpha[i];
     cp[i][2] = alpha[i] + theta[i];
   }
@@ -73,16 +73,16 @@ model {
       target += log_lik[i];
     
     mu_beta ~ normal(0, 2.5);
-    sigma_scen ~ normal(0, 1);
-    sigma_subj ~ normal(0, 1);
+    sigma_beta_scen ~ normal(0, 1);
+    sigma_beta_subj ~ normal(0, 1);
     
     mu_alpha ~ normal(0,2.5);
     sigma_alpha ~ normal(0,1);
     mu_theta ~ normal(0,2.5);
     sigma_theta ~ normal(0,1);
     
-    mu_eps ~ normal(0, 5);
-    sigma_eps ~ normal(0, 5);
+    mu_eps ~ normal(-2.5, 5);
+    sigma_eps ~ normal(5, 5);
     
     for (i in 1:Nsubj)
       beta_subj_raw[i] ~ normal(0,1);
@@ -98,7 +98,7 @@ model {
 generated quantities {
   real mu_legalgap;
   real sigma_legalgap;
-  real rho_alpha_theta = (mean(alpha .* theta) - mean(alpha)*mean(theta))/(sd(alpha) * sd(theta));
+  real rho_thresh = (mean(alpha .* theta) - mean(alpha)*mean(theta))/(sd(alpha) * sd(theta));
 
   real mu_lapserate;
   real sigma_lapserate;

@@ -134,8 +134,8 @@ model {
     to_vector(sigma_f2_subj) ~ normal(0,1);
     to_vector(sigma_f2_scen) ~ normal(0,1);
     
-    mu_eps ~ normal(0,5);
-    sigma_eps ~ normal(0,5);
+    mu_eps ~ normal(-2.5, 5);
+    sigma_eps ~ normal(5, 5);
     
     for (i in 1:Nsubj) {
       alpha_subj_raw[i] ~ normal(0,1);
