@@ -1,3 +1,16 @@
+functions {
+  real[] etaize(matrix X, int[] Subj, int[] Scen, real mu_alpha, 
+                  vector alpha_subj, vector alpha_scen, vector mu_beta, vector[] beta_subj, vector[] beta_scen) {
+    
+    int N = num_elements(Subj);
+    real eta[N];
+    for (i in 1:num_elements(Subj)) {
+        eta[i] = mu_alpha + alpha_scen[Scen[i]] + alpha_subj[Subj[i]] + X[i]*(mu_beta + beta_scen[Scen[i]] + beta_subj[Subj[i]]);
+    }
+    return eta;
+  }
+}
+
 data {
   int<lower=0> Nsubj;  // number of subjects
   int<lower=0> Nscen;  // number of cases
@@ -36,6 +49,7 @@ transformed parameters {
   vector[Nscen] alpha_scen = sigma_alpha_scen * alpha_scen_raw;
   vector[Nsubj] alpha_subj = sigma_alpha_subj * alpha_subj_raw;
   vector<lower=0,upper=1>[Nsubj] eps = inv_logit(mu_eps + sigma_eps * eps_raw);
+  real eta[N];
   real log_lik[N];
 
   //random effects
@@ -45,10 +59,8 @@ transformed parameters {
     beta_subj[i] = sigma_beta_subj .* beta_subj_raw[i];
     
   //linear predictor  
-  for (i in 1:N) {
-    real eta = mu_alpha + alpha_scen[Scen[i]] + alpha_subj[Subj[i]] + X[i]*(mu_beta + beta_scen[Scen[i]] + beta_subj[Subj[i]]);
-    log_lik[i] = log_mix(eps[Subj[i]], bernoulli_lpmf(Y[i] | 0.5), bernoulli_logit_lpmf(Y[i] | eta));
-  }
+  eta = etaize(X, Subj, Scen, mu_alpha, alpha_subj, alpha_scen, mu_beta, beta_subj, beta_scen);
+  for (i in 1:N) log_lik[i] = log_mix(eps[Subj[i]], bernoulli_logit_lpmf(Y[i] | mu_alpha + alpha_subj[Subj[i]]), bernoulli_logit_lpmf(Y[i] | eta[i]));
 }
 
 model {
